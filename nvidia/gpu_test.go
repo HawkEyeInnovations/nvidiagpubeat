@@ -51,12 +51,13 @@ func Test_Command_ProdEnv(t *testing.T) {
 		t.Errorf("Expected %s, Actual %s", "--query-gpu=myquery", cmd.Args[1])
 	}
 
-	if cmd.Args[2] != "--format=csv" {
-		t.Errorf("Expected %s, Actual %s", "--format=csv", cmd.Args[2])
+	if cmd.Args[2] != "--format=csv,nounits" {
+		t.Errorf("Expected %s, Actual %s", "--format=csv,nounits", cmd.Args[2])
 	}
 }
 
 func Test_Run_TestEnv(t *testing.T) {
+	t.Log("Running test env")
 	util := newUtilization()
 	query := "utilization.gpu,utilization.memory,memory.total,memory.free,memory.used,temperature.gpu,pstate"
 	cmd := util.command("test", query)
