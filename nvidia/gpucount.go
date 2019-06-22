@@ -53,6 +53,10 @@ func (g Count) run(cmd *exec.Cmd, env string, action Action) (int, error) {
 	gpuCount := 0
 	for {
 		line, err := reader.ReadString('\n')
+		
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return -1, err
 		}
@@ -61,9 +65,7 @@ func (g Count) run(cmd *exec.Cmd, env string, action Action) (int, error) {
 			return -1, errors.New("Unable to query GPUs")
 		}
 
-		if err == io.EOF {
-			break
-		}
+		
 		gpuCount++
 	}
 	return gpuCount, nil
