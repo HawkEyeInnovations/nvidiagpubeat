@@ -22,8 +22,6 @@ import (
 	"io"
 	"os/exec"
 	"strings"
-
-	"github.com/elastic/beats/libbeat/logp"
 )
 
 //GPUCount provides interface to get gpu count command and run it.
@@ -53,19 +51,17 @@ func (g Count) run(cmd *exec.Cmd, env string, action Action) (int, error) {
 	gpuCount := 0
 	for {
 		line, err := reader.ReadString('\n')
-		
+
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
 			return -1, err
 		}
-		logp.Info("Line: %v", line)
 		if len(line) != 0 && !strings.HasPrefix(line, "GPU ") {
 			return -1, errors.New("Unable to query GPUs")
 		}
 
-		
 		gpuCount++
 	}
 	return gpuCount, nil
