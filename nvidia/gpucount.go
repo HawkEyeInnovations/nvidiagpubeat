@@ -18,15 +18,16 @@
 package nvidia
 
 import (
+	"errors"
+	"io"
 	"os/exec"
-	"strconv"
 	"strings"
 )
 
 //GPUCount provides interface to get gpu count command and run it.
 type GPUCount interface {
 	command() *exec.Cmd
-	run(cmd *exec.Cmd, env string) (int, error)
+	run(cmd *exec.Cmd, env string, action Action) (int, error)
 }
 
 //Count implements one flavour of GPUCount interface.
@@ -39,20 +40,29 @@ func newCount() Count {
 }
 
 func (g Count) command() *exec.Cmd {
-	cmd := "ls /dev | grep nvidia | grep -v nvidia-uvm | grep -v nvidiactl | wc -l"
-	return exec.Command("bash", "-c", cmd)
+	return exec.Command("nvidia-smi", "--list-gpus")
 }
 
-func (g Count) run(cmd *exec.Cmd, env string) (int, error) {
+func (g Count) run(cmd *exec.Cmd, env string, action Action) (int, error) {
 	if env == "test" {
 		return 4, nil
 	}
-	out, err := cmd.Output()
-	ret := 0
-	if err == nil {
-		ret, _ = strconv.Atoi(strings.TrimSpace(string(out)))
-		return ret, nil
-	} else {
-		return -1, err
+	reader := action.start(cmd)
+	gpuCount := 0
+	for {
+		line, err := reader.ReadString('\n')
+
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return -1, err
+		}
+		if len(line) != 0 && !strings.HasPrefix(line, "GPU ") {
+			return -1, errors.New("Unable to query GPUs")
+		}
+
+		gpuCount++
 	}
+	return gpuCount, nil
 }

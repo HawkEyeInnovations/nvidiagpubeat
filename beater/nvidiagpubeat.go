@@ -22,11 +22,13 @@ package beater
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/elastic/beats/libbeat/beat"
 	"github.com/elastic/beats/libbeat/common"
 	"github.com/elastic/beats/libbeat/logp"
+	"github.com/elastic/beats/libbeat/paths"
 
 	"github.com/ebay/nvidiagpubeat/config"
 	"github.com/ebay/nvidiagpubeat/nvidia"
@@ -60,6 +62,10 @@ func (bt *Nvidiagpubeat) Run(b *beat.Beat) error {
 	bt.client, err = b.Publisher.Connect()
 	if err != nil {
 		return err
+	}
+	if bt.config.AddHomePath {
+		logp.Info("Adding %v to PATH", paths.Paths.Home)
+		os.Setenv("PATH", paths.Paths.Home+";"+os.Getenv("PATH"))
 	}
 	ticker := time.NewTicker(bt.config.Period)
 	for {

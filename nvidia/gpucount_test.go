@@ -23,27 +23,23 @@ func Test_GPUCount_Command(t *testing.T) {
 	count := newCount()
 	cmd := count.command()
 
-	if len(cmd.Args) != 3 {
-		t.Errorf("Expected %d, Actual %d", 3, len(cmd.Args))
+	if len(cmd.Args) != 2 {
+		t.Errorf("Expected %d, Actual %d", 2, len(cmd.Args))
 	}
 
-	if cmd.Args[0] != "bash" {
-		t.Errorf("Expected %s, Actual %s", "bash", cmd.Args[0])
+	if cmd.Args[0] != "nvidia-smi" {
+		t.Errorf("Expected %s, Actual %s", "nvidia-smi", cmd.Args[0])
 	}
 
-	if cmd.Args[1] != "-c" {
-		t.Errorf("Expected %s, Actual %s", "bash", cmd.Args[1])
-	}
-
-	if cmd.Args[2] != "ls /dev | grep nvidia | grep -v nvidia-uvm | grep -v nvidiactl | wc -l" {
-		t.Errorf("Expected %s, Actual %s", "bash", cmd.Args[2])
+	if cmd.Args[1] != "--list-gpus" {
+		t.Errorf("Expected %s, Actual %s", "--list-gpus", cmd.Args[1])
 	}
 }
 
 func Test_GPUCount_Run_TestEnv(t *testing.T) {
 	count := newCount()
 	cmd := count.command()
-	gpuCount, _ := count.run(cmd, "test")
+	gpuCount, _ := count.run(cmd, "test", NewLocal())
 
 	if gpuCount != 4 {
 		t.Errorf("Expected %d, Actual %d", 4, gpuCount)
@@ -53,7 +49,7 @@ func Test_GPUCount_Run_TestEnv(t *testing.T) {
 func Test_GPUCount_Run_ProdEnv(t *testing.T) {
 	count := newCount()
 	cmd := count.command()
-	gpuCount, _ := count.run(cmd, "prod")
+	gpuCount, _ := count.run(cmd, "prod", NewLocal())
 
 	if gpuCount != -1 {
 		t.Errorf("Expected %d, Actual %d", -1, gpuCount)
