@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/elastic/beats/libbeat/common"
-	"github.com/elastic/beats/libbeat/logp"
 )
 
 //GPUUtilization provides interface to utilization metrics and state of GPU.
