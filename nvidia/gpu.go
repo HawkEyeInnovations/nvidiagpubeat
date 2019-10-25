@@ -47,7 +47,7 @@ func (g Utilization) command(env string, query string) *exec.Cmd {
 	if env == "test" {
 		return exec.Command("localnvidiasmi")
 	}
-	return exec.Command("nvidia-smi", "--query-gpu="+query, "--format=csv")
+	return exec.Command("nvidia-smi", "--query-gpu="+query, "--format=csv,nounits")
 }
 
 //Run the nvidiasmi command to collect GPU metrics
@@ -70,12 +70,6 @@ func (g Utilization) run(cmd *exec.Cmd, gpuCount int, query string, action Actio
 			return nil, errors.New("Unable to fetch any events from nvidia-smi: Error " + err.Error())
 		}
 
-		// Remove units put by nvidia-smi
-		line = strings.Replace(line, " %", "", -1)
-		line = strings.Replace(line, " MiB", "", -1)
-		line = strings.Replace(line, " P", "", -1)
-		line = strings.Replace(line, " ", "", -1)
-
 		r := csv.NewReader(strings.NewReader(line))
 		record, err := r.Read()
 		if err == io.EOF {
@@ -87,9 +81,15 @@ func (g Utilization) run(cmd *exec.Cmd, gpuCount int, query string, action Actio
 			"type":     "nvidiagpubeat",
 		}
 		for i := 0; i < len(record); i++ {
-			value, _ := strconv.Atoi(record[i])
-			event.Put(headers[i], value)
+			value := strings.TrimSpace(record[i])
+			// Attempt to convert to an int, if that fails just report as a string
+			if conv, err := strconv.Atoi(value); err == nil {
+				event.Put(headers[i], conv)
+			} else {
+				event.Put(headers[i], value)
+			}
 		}
+
 		events[gpuIndex] = event
 		gpuIndex++
 	}
