@@ -18,12 +18,11 @@
 package nvidia
 
 import (
-	"encoding/csv"
 	"errors"
-	"io"
-	"os/exec"
 	"strconv"
 	"strings"
+	"os/exec"
+	"encoding/xml"
 
 	"github.com/elastic/beats/libbeat/common"
 )
@@ -47,52 +46,91 @@ func (g Utilization) command(env string, query string) *exec.Cmd {
 	if env == "test" {
 		return exec.Command("localnvidiasmi")
 	}
-	return exec.Command("nvidia-smi", "--query-gpu="+query, "--format=csv,nounits")
+	return exec.Command("nvidia-smi", "-q", "-x")
+}
+
+type TrimmedInt struct {
+	int64
+}
+
+func(t *TrimmedInt) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var v string
+	d.DecodeElement(&v, &start)
+	strs := strings.Split(v, " ")
+
+	if len(strs) == 0 {
+		return errors.New("No values in string " + v)
+	}
+
+	i, err := strconv.ParseInt(strs[0], 10, 64);
+	if err != nil {
+		return err
+	}
+
+	*t = TrimmedInt{i};
+
+	return nil
 }
 
 //Run the nvidiasmi command to collect GPU metrics
 //Parse output and return events.
 func (g Utilization) run(cmd *exec.Cmd, gpuCount int, query string, action Action) ([]common.MapStr, error) {
 	reader := action.start(cmd)
-	gpuIndex := 0
 	events := make([]common.MapStr, gpuCount, 2*gpuCount)
 
-	for {
-		line, err := reader.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		// Ignore header
-		if strings.Contains(line, "utilization") {
-			continue
-		}
-		if len(line) == 0 {
-			return nil, errors.New("Unable to fetch any events from nvidia-smi: Error " + err.Error())
-		}
+	decoder := xml.NewDecoder(reader)
 
-		r := csv.NewReader(strings.NewReader(line))
-		record, err := r.Read()
-		if err == io.EOF {
-			break
-		}
-		headers := strings.Split(query, ",")
-		event := common.MapStr{
-			"gpuIndex": gpuIndex,
-			"type":     "nvidiagpubeat",
-		}
-		for i := 0; i < len(record); i++ {
-			value := strings.TrimSpace(record[i])
-			// Attempt to convert to an int, if that fails just report as a string
-			if conv, err := strconv.Atoi(value); err == nil {
-				event.Put(headers[i], conv)
-			} else {
-				event.Put(headers[i], value)
-			}
-		}
-
-		events[gpuIndex] = event
-		gpuIndex++
+	type Utilization struct {
+		GPU TrimmedInt `xml:"gpu_util" json:"gpu"`
+		Memory TrimmedInt `xml:"memory_util" json:"memory"`
+		Encoder TrimmedInt `xml:"encoder_util" json:"encoder"`
+		Decoder TrimmedInt `xml:"decoder_util" json:"decoder"`
 	}
+
+	type Temperature struct {
+		GPU TrimmedInt `xml:"gpu_temp" json:"gpu"`
+	}
+
+	type GPU struct {
+		Name string `xml:"product_name"`
+		Utilization Utilization `xml:"utilization"`
+		Temperature Temperature `xml:"temperature"`
+	}
+
+	type Data struct {
+		XMLName xml.Name `xml:"nvidia_smi_log"`
+		DriverVersion string `xml:"driver_version"`
+		GPU []GPU `xml:"gpu"`
+	}
+
+	v := Data{}
+
+	err := decoder.Decode(&v)
+	if err != nil {
+		return nil, errors.New("Unable to decode Xml")
+	}
+
+	for i, gpu := range v.GPU {
+		event := common.MapStr{
+			"gpu_index": i,
+			"type": "nvidiagpubeat",
+			"driver_version": v.DriverVersion,
+			"utilization": gpu.Utilization,
+		}
+
+		// event.Put("name", gpu.Name)
+		// event.Put("utilziation", gpu.Utilization)
+		// util := common.MapStr{
+		// 	"gpu" : gpu.Utilization.GPU,
+		// 	"memory" : gpu.Utilization.Memory,
+		// 	"encoder" : gpu.Utilization.Encoder,
+		// 	"decoder" : gpu.Utilization.Decoder,
+		// }
+		
+		// event.Put("utilization", util)
+		events[i] = event
+	}
+
 	cmd.Wait()
 	return events, nil
 }
