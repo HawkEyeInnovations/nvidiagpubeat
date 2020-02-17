@@ -49,9 +49,7 @@ func (g Utilization) command(env string, query string) *exec.Cmd {
 	return exec.Command("nvidia-smi", "-q", "-x")
 }
 
-type TrimmedInt struct {
-	int64
-}
+type TrimmedInt int64
 
 func(t *TrimmedInt) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	var v string
@@ -67,7 +65,7 @@ func(t *TrimmedInt) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		return err
 	}
 
-	*t = TrimmedInt{i};
+	*t = TrimmedInt(i);
 
 	return nil
 }
@@ -91,10 +89,17 @@ func (g Utilization) run(cmd *exec.Cmd, gpuCount int, query string, action Actio
 		GPU TrimmedInt `xml:"gpu_temp" json:"gpu"`
 	}
 
+	type Memory struct {
+		Total TrimmedInt `xml:"total" json:"total"`
+		Used TrimmedInt `xml:"used" json:"used"`
+		Free TrimmedInt `xml:"free" json:"free"`
+	}
+
 	type GPU struct {
 		Name string `xml:"product_name"`
 		Utilization Utilization `xml:"utilization"`
 		Temperature Temperature `xml:"temperature"`
+		Memory Memory `xml:"fb_memory_usage"`
 	}
 
 	type Data struct {
@@ -107,7 +112,7 @@ func (g Utilization) run(cmd *exec.Cmd, gpuCount int, query string, action Actio
 
 	err := decoder.Decode(&v)
 	if err != nil {
-		return nil, errors.New("Unable to decode Xml")
+		return nil, err
 	}
 
 	for i, gpu := range v.GPU {
@@ -115,7 +120,10 @@ func (g Utilization) run(cmd *exec.Cmd, gpuCount int, query string, action Actio
 			"gpu_index": i,
 			"type": "nvidiagpubeat",
 			"driver_version": v.DriverVersion,
+			"name" : gpu.Name,
 			"utilization": gpu.Utilization,
+			"temperature" : gpu.Temperature,
+			"memory" : gpu.Memory,
 		}
 
 		// event.Put("name", gpu.Name)
@@ -126,7 +134,7 @@ func (g Utilization) run(cmd *exec.Cmd, gpuCount int, query string, action Actio
 		// 	"encoder" : gpu.Utilization.Encoder,
 		// 	"decoder" : gpu.Utilization.Decoder,
 		// }
-		
+
 		// event.Put("utilization", util)
 		events[i] = event
 	}
