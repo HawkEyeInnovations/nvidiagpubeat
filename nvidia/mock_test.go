@@ -23,12 +23,22 @@ import (
 	"os/exec"
 )
 
-//MockLocal implements one flavour of Action interface.
-type MockLocal struct {
+//MockSingle implements one flavour of Action interface.
+type MockSingle struct {
+}
+
+//MockDual implements one flavour of Action interface.
+type MockDual struct {
 }
 
 //Start starts cmd and returns reader object that contains output of command
-func (local MockLocal) start(cmd *exec.Cmd) *bufio.Reader {
-	f, _ := os.Open("testing/gpuutil.csv")
+func (local MockSingle) start(cmd *exec.Cmd) *bufio.Reader {
+	f, _ := os.Open("testing/SingleGPU.xml")
+	return bufio.NewReader(f)
+}
+
+//Start starts cmd and returns reader object that contains output of command
+func (local MockDual) start(cmd *exec.Cmd) *bufio.Reader {
+	f, _ := os.Open("testing/DualGPU.xml")
 	return bufio.NewReader(f)
 }

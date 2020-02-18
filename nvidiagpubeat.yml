@@ -25,8 +25,12 @@
 nvidiagpubeat:
   # Defines how often an event is sent to the output
   period: 1s
-  query: "utilization.gpu,utilization.memory,memory.total,memory.free,memory.used,temperature.gpu,pstate"
-  env: "production"
+  system:
+    - cuda_version
+    - driver_version
+  gpu:
+    - memory
+    - utilization
   add_home_path: true
   # env can be test or production. test is for test purposes to evaluate funcationality of this beat. Switch to production
   # when you want to run this beat on a Nvidia GPU machine with SMI driver installed.

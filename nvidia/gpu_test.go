@@ -22,22 +22,9 @@ import (
 	"testing"
 )
 
-func Test_Command_TestEnv(t *testing.T) {
-	util := newUtilization()
-	cmd := util.command("test", "myquery")
-
-	if len(cmd.Args) != 1 {
-		t.Errorf("Expected %d, Actual %d", 1, len(cmd.Args))
-	}
-
-	if cmd.Args[0] != "localnvidiasmi" {
-		t.Errorf("Expected %s, Actual %s", "localnvidiasmi", cmd.Args[0])
-	}
-}
-
-func Test_Command_ProdEnv(t *testing.T) {
-	util := newUtilization()
-	cmd := util.command("prod", "myquery")
+func TestCommand(t *testing.T) {
+	util := NewUtilization()
+	cmd := util.command()
 
 	if len(cmd.Args) != 3 {
 		t.Errorf("Expected %d, Actual %d", 3, len(cmd.Args))
@@ -47,34 +34,38 @@ func Test_Command_ProdEnv(t *testing.T) {
 		t.Errorf("Expected %s, Actual %s", "nvidia-smi", cmd.Args[0])
 	}
 
-	if cmd.Args[1] != "--query-gpu=myquery" {
-		t.Errorf("Expected %s, Actual %s", "--query-gpu=myquery", cmd.Args[1])
+	if cmd.Args[1] != "-q" {
+		t.Errorf("Expected %s, Actual %s", "--q", cmd.Args[1])
 	}
 
-	if cmd.Args[2] != "--format=csv,nounits" {
-		t.Errorf("Expected %s, Actual %s", "--format=csv,nounits", cmd.Args[2])
+	if cmd.Args[2] != "-x" {
+		t.Errorf("Expected %s, Actual %s", "-x", cmd.Args[2])
 	}
 }
 
-func Test_Run_TestEnv(t *testing.T) {
+func TestRunTestEnv(t *testing.T) {
 	t.Log("Running test env")
-	util := newUtilization()
-	query := "utilization.gpu,utilization.memory,memory.total,memory.free,memory.used,temperature.gpu,pstate"
-	cmd := util.command("test", query)
-	os.Setenv("PATH", ".")
-	output, _ := util.run(cmd, 4, query, NewLocal())
-	if output == nil {
-		//TODO fix unit test case
-		//t.Errorf("output cannot be nil")
+	util := NewUtilization()
+	cmd := util.command()
+	_, err := util.run(cmd, NewQuery(), MockSingle{})
+	if err != nil {
+		t.Errorf("%v", err)
 	}
 }
 
-func Test_Run_ProdEnv(t *testing.T) {
-	util := newUtilization()
-	query := "utilization.gpu,utilization.memory,memory.total,memory.free,memory.used,temperature.gpu,pstate"
-	cmd := util.command("prod", query)
-	t.Logf("Command: %s", cmd.Path)
-	output, _ := util.run(cmd, 4, query, MockLocal{})
+func TestRunProdEnv(t *testing.T) {
+	util := NewUtilization()
+	cmd := util.command()
+	os.Setenv("PATH", ".")
+	output, err := util.run(cmd, NewQuery(), NewLocal())
+
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	if output == nil {
+		t.Errorf("Output cannot be nil")
+	}
 
 	for _, o := range output {
 		if o == nil {
@@ -83,18 +74,43 @@ func Test_Run_ProdEnv(t *testing.T) {
 	}
 }
 
-func Test_Event_Contains_Type_Field(t *testing.T) {
-	util := newUtilization()
-	query := "utilization.gpu,utilization.memory,memory.total,memory.free,memory.used,temperature.gpu,pstate"
-	cmd := util.command("prod", query)
+func TestEventContainsTypeField(t *testing.T) {
+	util := NewUtilization()
+	cmd := util.command()
 	t.Logf("Command: %s", cmd.Path)
 
-	output, _ := util.run(cmd, 4, query, MockLocal{})
+	output, _ := util.run(cmd, NewQuery(), MockSingle{})
 	t.Logf("Nr. of Events: %d", len(output))
 
 	for _, o := range output {
 		if o["type"] != "nvidiagpubeat" {
 			t.Errorf("event does not contain 'type' field equal to 'nvidiagpubeat'")
 		}
+	}
+}
+
+func TestEventCountCorrectSingle(t *testing.T) {
+	util := NewUtilization()
+	cmd := util.command()
+	t.Logf("Command: %s", cmd.Path)
+
+	output, _ := util.run(cmd, NewQuery(), MockSingle{})
+	t.Logf("Nr. of Events: %d", len(output))
+
+	if count := len(output); count != 1 {
+		t.Errorf("Expected %d Actual %d", 1, count)
+	}
+}
+
+func TestEventCountCorrectDual(t *testing.T) {
+	util := NewUtilization()
+	cmd := util.command()
+	t.Logf("Command: %s", cmd.Path)
+
+	output, _ := util.run(cmd, NewQuery(), MockDual{})
+	t.Logf("Nr. of Events: %d", len(output))
+
+	if count := len(output); count != 2 {
+		t.Errorf("Expected %d Actual %d", 2, count)
 	}
 }
