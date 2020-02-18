@@ -26,11 +26,6 @@ import (
 )
 
 func Test_Config(t *testing.T) {
-
-	if DefaultConfig.Env != "local" {
-		t.Errorf("Expected %s, Actual %s", "local", DefaultConfig.Env)
-	}
-
 	if DefaultConfig.Period != 1*time.Second {
 		t.Errorf("Expected %d, Actual %d", 1*time.Second, DefaultConfig.Period)
 	}

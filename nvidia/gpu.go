@@ -18,81 +18,130 @@
 package nvidia
 
 import (
-	"encoding/csv"
+	"encoding/xml"
 	"errors"
-	"io"
 	"os/exec"
+	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/elastic/beats/libbeat/common"
 )
 
-//GPUUtilization provides interface to utilization metrics and state of GPU.
-type GPUUtilization interface {
-	command(env string) *exec.Cmd
-	run(cmd *exec.Cmd, gpuCount int, query string, action Action) ([]common.MapStr, error)
-}
-
-//Utilization implements one flavour of GPUCount interface.
+// Utilization implements one flavour of GPUCount interface.
 type Utilization struct {
 }
 
-//newUtilization returns instance of Utilization
-func newUtilization() Utilization {
+// NewUtilization returns instance of Utilization
+func NewUtilization() Utilization {
 	return Utilization{}
 }
 
-func (g Utilization) command(env string, query string) *exec.Cmd {
-	if env == "test" {
-		return exec.Command("localnvidiasmi")
+func (g Utilization) command() *exec.Cmd {
+	return exec.Command("nvidia-smi", "-q", "-x")
+}
+
+// TrimmedInt allows for an Unmarshal which will crop off unit types
+type TrimmedInt int64
+
+// UnmarshalXML for the TrimmedInt type will trim off units from the string
+// e.g. "48 MB" becomes "48"
+func (t *TrimmedInt) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var v string
+	d.DecodeElement(&v, &start)
+	strs := strings.Split(v, " ")
+
+	if len(strs) == 0 {
+		return errors.New("No values in string " + v)
 	}
-	return exec.Command("nvidia-smi", "--query-gpu="+query, "--format=csv,nounits")
+
+	i, err := strconv.ParseInt(strs[0], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	*t = TrimmedInt(i)
+
+	return nil
+}
+
+// PopulateArgs takes in a reflected type and adds the field and its value
+// to the libbeat map if it has been configured to add it in the Map
+func PopulateArgs(m Map, val reflect.Value, event *common.MapStr) {
+	valType := val.Type()
+	for i := 0; i < valType.NumField(); i++ {
+		valueField := val.Field(i)
+		typeField := valType.Field(i)
+
+		tag := typeField.Tag.Get("json")
+
+		if _, ok := m[tag]; ok {
+			event.Put(tag, valueField.Interface())
+		}
+	}
 }
 
 //Run the nvidiasmi command to collect GPU metrics
 //Parse output and return events.
-func (g Utilization) run(cmd *exec.Cmd, gpuCount int, query string, action Action) ([]common.MapStr, error) {
+func (g Utilization) run(cmd *exec.Cmd, query Query, action Action) ([]common.MapStr, error) {
 	reader := action.start(cmd)
-	gpuIndex := 0
-	events := make([]common.MapStr, gpuCount, 2*gpuCount)
 
-	for {
-		line, err := reader.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		// Ignore header
-		if strings.Contains(line, "utilization") {
-			continue
-		}
-		if len(line) == 0 {
-			return nil, errors.New("Unable to fetch any events from nvidia-smi: Error " + err.Error())
-		}
+	decoder := xml.NewDecoder(reader)
 
-		r := csv.NewReader(strings.NewReader(line))
-		record, err := r.Read()
-		if err == io.EOF {
-			break
-		}
-		headers := strings.Split(query, ",")
-		event := common.MapStr{
-			"gpuIndex": gpuIndex,
-			"type":     "nvidiagpubeat",
-		}
-		for i := 0; i < len(record); i++ {
-			value := strings.TrimSpace(record[i])
-			// Attempt to convert to an int, if that fails just report as a string
-			if conv, err := strconv.Atoi(value); err == nil {
-				event.Put(headers[i], conv)
-			} else {
-				event.Put(headers[i], value)
-			}
-		}
-
-		events[gpuIndex] = event
-		gpuIndex++
+	type Utilization struct {
+		GPU     TrimmedInt `xml:"gpu_util" json:"gpu"`
+		Memory  TrimmedInt `xml:"memory_util" json:"memory"`
+		Encoder TrimmedInt `xml:"encoder_util" json:"encoder"`
+		Decoder TrimmedInt `xml:"decoder_util" json:"decoder"`
 	}
+
+	type Temperature struct {
+		GPU TrimmedInt `xml:"gpu_temp" json:"gpu"`
+	}
+
+	type Memory struct {
+		Total TrimmedInt `xml:"total" json:"total"`
+		Used  TrimmedInt `xml:"used" json:"used"`
+		Free  TrimmedInt `xml:"free" json:"free"`
+	}
+
+	type GPU struct {
+		Name        string      `xml:"product_name" json:"name"`
+		Utilization Utilization `xml:"utilization" json:"utilization"`
+		Temperature Temperature `xml:"temperature" json:"temperature"`
+		Memory      Memory      `xml:"fb_memory_usage" json:"memory"`
+	}
+
+	type Data struct {
+		XMLName       xml.Name `xml:"nvidia_smi_log"`
+		CudaVersion   string   `xml:"cuda_version" json:"cuda_version"`
+		DriverVersion string   `xml:"driver_version" json:"driver_version"`
+		GPU           []GPU    `xml:"gpu"`
+	}
+
+	v := Data{}
+
+	err := decoder.Decode(&v)
+	if err != nil {
+		return nil, err
+	}
+
+	gpuCount := len(v.GPU)
+
+	events := make([]common.MapStr, gpuCount, gpuCount)
+
+	for i, gpu := range v.GPU {
+		event := common.MapStr{
+			"gpu_index": i,
+			"type":      "nvidiagpubeat",
+		}
+
+		PopulateArgs(query.System, reflect.ValueOf(&v).Elem(), &event)
+		PopulateArgs(query.GPU, reflect.ValueOf(&gpu).Elem(), &event)
+
+		events[i] = event
+	}
+
 	cmd.Wait()
 	return events, nil
 }

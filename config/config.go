@@ -27,14 +27,14 @@ import "time"
 
 type Config struct {
 	Period      time.Duration `config:"period"`
-	Query       string        `config:"query"`
-	Env         string        `config:"env"`
+	System      []string `config:"system"`
+	GPU         []string `config:"gpu"`
 	AddHomePath bool          `config:"add_home_path"`
 }
 
 var DefaultConfig = Config{
 	Period:      1 * time.Second,
-	Query:       "utilization.gpu,utilization.memory,memory.total,memory.free,memory.used,temperature.gpu,pstate",
-	Env:         "local",
+	System:      []string{"memory"},
+	GPU:         []string{"driver_version"},
 	AddHomePath: false,
 }

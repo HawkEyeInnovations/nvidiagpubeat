@@ -56,7 +56,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 
 //Run Contains the main application loop that captures data and sends it to the defined output using the publisher
 func (bt *Nvidiagpubeat) Run(b *beat.Beat) error {
-	logp.Info("nvidiagpubeat is running for ** %s ** environment. ! Hit CTRL-C to stop it.", bt.config.Env)
+	logp.Info("nvidiagpubeat is running. Hit CTRL-C to stop it.")
 
 	var err error
 	bt.client, err = b.Publisher.Connect()
@@ -68,6 +68,10 @@ func (bt *Nvidiagpubeat) Run(b *beat.Beat) error {
 		os.Setenv("PATH", paths.Paths.Home+";"+os.Getenv("PATH"))
 	}
 	ticker := time.NewTicker(bt.config.Period)
+
+	// Construct an instance of Query and for each type in the array add it into a map
+	query := nvidia.NewQuery(bt.config.System, bt.config.GPU)
+
 	for {
 		select {
 		case <-bt.done:
@@ -76,7 +80,7 @@ func (bt *Nvidiagpubeat) Run(b *beat.Beat) error {
 		}
 
 		metrics := nvidia.NewMetrics()
-		events, err := metrics.Get(bt.config.Env, bt.config.Query)
+		events, err := metrics.Get(query)
 		if err != nil {
 			logp.Err("Event not generated, error: %s", err.Error())
 		} else {
