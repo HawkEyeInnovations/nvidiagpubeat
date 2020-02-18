@@ -30,6 +30,7 @@ nvidiagpubeat:
     - driver_version
   gpu:
     - memory
+    - name
     - temperature
     - utilization
   # If true, addes the home path to the Environment Path
