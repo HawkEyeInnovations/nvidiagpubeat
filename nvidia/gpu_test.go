@@ -47,7 +47,7 @@ func TestRunTestEnv(t *testing.T) {
 	t.Log("Running test env")
 	util := NewUtilization()
 	cmd := util.command()
-	_, err := util.run(cmd, NewQuery(), MockSingle{})
+	_, err := util.run(cmd, MockQuery(), MockSingle{})
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -57,7 +57,7 @@ func TestRunProdEnv(t *testing.T) {
 	util := NewUtilization()
 	cmd := util.command()
 	os.Setenv("PATH", ".")
-	output, err := util.run(cmd, NewQuery(), NewLocal())
+	output, err := util.run(cmd, MockQuery(), NewLocal())
 
 	if err != nil {
 		t.Errorf("%v", err)
@@ -79,7 +79,7 @@ func TestEventContainsTypeField(t *testing.T) {
 	cmd := util.command()
 	t.Logf("Command: %s", cmd.Path)
 
-	output, _ := util.run(cmd, NewQuery(), MockSingle{})
+	output, _ := util.run(cmd, MockQuery(), MockSingle{})
 	t.Logf("Nr. of Events: %d", len(output))
 
 	for _, o := range output {
@@ -94,7 +94,7 @@ func TestEventCountCorrectSingle(t *testing.T) {
 	cmd := util.command()
 	t.Logf("Command: %s", cmd.Path)
 
-	output, _ := util.run(cmd, NewQuery(), MockSingle{})
+	output, _ := util.run(cmd, MockQuery(), MockSingle{})
 	t.Logf("Nr. of Events: %d", len(output))
 
 	if count := len(output); count != 1 {
@@ -107,7 +107,7 @@ func TestEventCountCorrectDual(t *testing.T) {
 	cmd := util.command()
 	t.Logf("Command: %s", cmd.Path)
 
-	output, _ := util.run(cmd, NewQuery(), MockDual{})
+	output, _ := util.run(cmd, MockQuery(), MockDual{})
 	t.Logf("Nr. of Events: %d", len(output))
 
 	if count := len(output); count != 2 {

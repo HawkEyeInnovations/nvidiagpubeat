@@ -21,7 +21,7 @@ import "testing"
 
 func TestMetrics_NewMetrics(t *testing.T) {
 	m := NewMetrics()
-	query := NewQuery()
+	query := MockQuery()
 	output, _ := m.Get(query)
 	for _, o := range output {
 		if o != nil {

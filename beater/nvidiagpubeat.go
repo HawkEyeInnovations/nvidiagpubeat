@@ -70,15 +70,7 @@ func (bt *Nvidiagpubeat) Run(b *beat.Beat) error {
 	ticker := time.NewTicker(bt.config.Period)
 
 	// Construct an instance of Query and for each type in the array add it into a map
-	query := nvidia.NewQuery()
-
-	for _, t := range bt.config.System {
-		query.System[t] = struct{}{}
-	}
-
-	for _, t := range bt.config.GPU {
-		query.GPU[t] = struct{}{}
-	}
+	query := nvidia.NewQuery(bt.config.System, bt.config.GPU)
 
 	for {
 		select {

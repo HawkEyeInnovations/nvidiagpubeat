@@ -9,10 +9,20 @@ type Query struct {
 	GPU    Map
 }
 
-// NewQuery construct and returns an empty Query struct
-func NewQuery() Query {
-	return Query{
+// NewQuery construct and returns an Query struct populated from string arrays
+func NewQuery(system []string, gpu []string) Query {
+	query := Query{
 		System: make(Map),
 		GPU:    make(Map),
 	}
+
+	for _, t := range system {
+		query.System[t] = struct{}{}
+	}
+
+	for _, t := range gpu {
+		query.GPU[t] = struct{}{}
+	}
+
+	return query
 }
