@@ -29,7 +29,7 @@ nvidiagpubeat elastic beat with help of nvidia-smi allows administrators to quer
 
 NVIDIA-smi ships with NVIDIA GPU display drivers on Linux, and with 64bit Windows Server 2008 R2 and Windows 7.
 
-nvidiagpubeat provides ability (look at nvidiagpubeat.yml) to configure metrics that needs to be monitored and by default it queries utilization.gpu,utilization.memory,memory.total,memory.free,memory.used,temperature.gpu,pstate and can ingest them into elastic search cluster for possibly visualization using Kibana.
+nvidiagpubeat provides ability (look at nvidiagpubeat.full.yml) to configure metrics that needs to be monitored and can ingest them into elastic search cluster for possibly visualization using Kibana.
 
 ## Getting Started with nvidiagpubeat
 
@@ -143,7 +143,7 @@ Publish event: {
   "host": {
     "name": "hostname.company.com"
   },
-  "gpuIndex": 3,
+  "gpu_index": 3,
   "type": "nvidiagpubeat"
 }
 ```
@@ -193,35 +193,6 @@ git remote add upstream git@github.com:eBay/nvidiagpubeat.git
 ```
 
 For further development, check out the [beat developer guide](https://www.elastic.co/guide/en/beats/libbeat/current/new-beat.html).
-
-### Testimonials
-I would love to hear about your use case. It will help me improve `nvidiagpubeat`. Please add few lines about 
-your use case, affiliation and location. All fields are optional. 
-
-1. Use Case: I am running deeplearning models on a headless linux machine. Therefore, it is essential for me to track my gpu load and related stats.
-
-   Country: Germany
-   
-   Full Name: Julius Zimmermann
-   
-   Affiliation: Student
- 
-2. Use Case:  
-
-   Country: 
-   
-   Full Name:
-   
-   Affiliation:
- 
-3. Use Case:  
-
-   Country: 
-   
-   Full Name:
-   
-   Affiliation:
- 
 
 ### License
 Copyright 2016-2018 eBay Inc.
