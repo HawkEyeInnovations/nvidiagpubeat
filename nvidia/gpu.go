@@ -68,9 +68,10 @@ func (t *TrimmedInt) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error 
 // PopulateArgs takes in a reflected type and adds the field and its value
 // to the libbeat map if it has been configured to add it in the Map
 func PopulateArgs(m Map, val reflect.Value, event *common.MapStr) {
-	for i := 0; i < val.Type().NumField(); i++ {
+	valType := val.Type()
+	for i := 0; i < valType.NumField(); i++ {
 		valueField := val.Field(i)
-		typeField := val.Type().Field(i)
+		typeField := valType.Field(i)
 
 		tag := typeField.Tag.Get("json")
 
