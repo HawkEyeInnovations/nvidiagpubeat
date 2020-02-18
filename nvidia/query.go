@@ -9,7 +9,7 @@ type Query struct {
 	GPU    Map
 }
 
-// NewQuery construct and returns an Query struct populated from string arrays
+// NewQuery construct and returns a Query struct populated from string arrays
 func NewQuery(system []string, gpu []string) Query {
 	query := Query{
 		System: make(Map),
